@@ -1,0 +1,12 @@
+global:
+    subscriptionName: "{{ .Values.subscriptionName }}"
+    tenantId: "{{ .Values.tenantId }}"
+    location: "{{ .Values.location }}"
+    servicePrincipal: "{{ .Values.productShortName }}-{{ .Values.envName }}-{{ .Values.owner }}-{{ .Values.loc }}-spn"
+    servicePrincipalAppId: "{{ .Values.servicePrincipalAppId }}"
+    servicePrincipalCertThumbprint: "{{ .Values.servicePrincipalCertThumbprint }}"
+    resourceGroup: "{{ .Values.productName }}-{{ .Values.envName }}-{{ .Values.owner }}-{{ .Values.loc }}-rg"
+kv:
+    name: "{{ .Values.subscriptionAlias }}-kv"
+    resourceGroup: "{{ .Values.subscriptionAlias }}-rg"
+    location: "{{ .Values.location }}"
