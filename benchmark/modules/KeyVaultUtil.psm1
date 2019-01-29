@@ -1,3 +1,23 @@
+function EnsureCertificateInKeyVault {
+    param(
+        [string] $VaultName,
+        [string] $CertName,
+        [string] $EnvFolder
+    )
+
+    $existingCert = az keyvault certificate list --vault-name $VaultName --query "[?id=='https://$VaultName.vault.azure.net/certificates/$CertName']" | ConvertFrom-Json
+    if ($existingCert) {
+        Write-Host "Certificate '$CertName' already exists in vault '$VaultName'"
+    }
+    else {
+        $credentialFolder = Join-Path $ScriptFolder "credential"
+        New-Item -Path $credentialFolder -ItemType Directory -Force | Out-Null
+        $defaultPolicyFile = Join-Path $credentialFolder "default_policy.json"
+        az keyvault certificate get-default-policy -o json | Out-File $defaultPolicyFile -Encoding utf8 
+        az keyvault certificate create -n $CertName --vault-name $vaultName -p @$defaultPolicyFile | Out-Null
+    }
+}
+
 function Get-OrCreatePasswordInVault { 
     param(
         [string] $VaultName, 
@@ -26,11 +46,35 @@ function Get-OrCreatePasswordInVault {
 function Get-OrCreateServicePrincipalWithCert {
     param(
         [string]$SpnName,
-        [string]$VaultName
+        [string]$SpnCertName,
+        [string]$VaultName,
+        [string]$EnvFolder,
+        $AzureAccount
     )
 
-    $certName = "$SpnName-cert"
-    
+    $sp = az ad sp list --display-name $SpnName | ConvertFrom-Json
+    if (!$sp) {
+        Write-Host "Creating service principal with name '$SpnName'..." 
+        
+        EnsureCertificateInKeyVault -VaultName $VaultName -CertName $SpnCertName -EnvFolder $EnvFolder
+
+        az ad sp create-for-rbac -n $SpnName --role contributor --keyvault $VaultName --cert $SpnCertName | Out-Null
+        $sp = az ad sp list --display-name $SpnName | ConvertFrom-Json
+        Write-Host "Granting spn '$SpnName' 'contributor' role to subscription" 
+        az role assignment create --assignee $sp.appId --role Contributor --scope "/subscriptions/$($AzureAccount.id)" | Out-Null
+
+        Write-Host "Granting spn '$($SpnName)' permissions to keyvault '$($VaultName)'" 
+        az keyvault set-policy `
+            --name $($bootstrapValues.kv.name) `
+            --resource-group $bootstrapValues.kv.resourceGroup `
+            --object-id $sp.objectId `
+            --spn $sp.displayName `
+            --certificate-permissions get list update delete `
+            --secret-permissions get list set delete | Out-Null
+    }
+    else {
+        Write-Host "Service principal '$SpnName' already exists." 
+    }
 }
 
 
@@ -60,7 +104,7 @@ function Get-OrCreateServicePrincipalWithPwd {
     $subscriptionId = $azAccount.id
     $scopes = "/subscriptions/$subscriptionId/resourceGroups/$($rgName)"
     
-    LogInfo -Message "Granting spn '$ServicePrincipalName' 'Contributor' role to resource group '$rgName'"
+    Write-Host "Granting spn '$ServicePrincipalName' 'Contributor' role to resource group '$rgName'"
     az ad sp create-for-rbac `
         --name $ServicePrincipalName `
         --password $($servicePrincipalPwd.value) `
@@ -69,7 +113,7 @@ function Get-OrCreateServicePrincipalWithPwd {
     
     $spn = az ad sp list --display-name $ServicePrincipalName | ConvertFrom-Json
 
-    LogInfo -Message "Grant required resource access for aad app..."
+    Write-Host "Grant required resource access for aad app..."
     az ad app update --id $spn.appId --required-resource-accesses $spnAuthJsonFile | Out-Null
     az ad app update --id $spn.appId --reply-urls "http://$($ServicePrincipalName)" | Out-Null
     
@@ -113,34 +157,17 @@ function New-CertificateAsSecret {
 
 function Install-CertFromVaultSecret {
     param(
-        [string] $VaultName,
-        [string] $CertSecretName 
+        [string] $VaultName = "rrdult-kv",
+        [string] $CertSecretName = "bm-dev-xd-wus2-spn-cert"
     )
-    $certSecret = Get-AzureKeyVaultSecret -VaultName $VaultName -Name $CertSecretName 
 
-    $kvSecretBytes = [System.Convert]::FromBase64String($certSecret.SecretValueText)
-    $certDataJson = [System.Text.Encoding]::UTF8.GetString($kvSecretBytes) | ConvertFrom-Json
-    $pfxBytes = [System.Convert]::FromBase64String($certDataJson.data)
-    $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
-    $pfx = new-object System.Security.Cryptography.X509Certificates.X509Certificate2
-
-    $certPwdSecretName = "$CertSecretName-pwd"
-    $certPwdSecret = Get-OrCreatePasswordInVault -vaultName $VaultName -secretName $certPwdSecretName
-
-    $pfx.Import($pfxBytes, $certPwdSecret.SecretValue, $flags)
-    $thumbprint = $pfx.Thumbprint
-
-    $certAlreadyExists = Test-Path Cert:\CurrentUser\My\$thumbprint
-    if (!$certAlreadyExists) {
-        $x509Store = new-object System.Security.Cryptography.X509Certificates.X509Store -ArgumentList My, CurrentUser
-        $x509Store.Open('ReadWrite')
-        $x509Store.Add($pfx)
-    }
-
-    return $pfx 
+    $certFile = Join-Path ([System.IO.Path]::GetTempPath()) "$CertSecretName.pfx"
+    az keyvault secret download --file $certFile --vault-name $VaultName --name $CertSecretName
+    Import-PfxCertificate -FilePath $certFile -Exportable -CertStoreLocation "cert:\CurrentUser\My" 
+    Remove-Item $certFile -Force
 }
 
-function Ensure-KeyVault {
+function EnsureKeyVault {
     param(
         [string] $rgName,
         [string] $vaultName,
