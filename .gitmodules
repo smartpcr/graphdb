@@ -22,3 +22,9 @@
 [submodule "gremlin/Weaver"]
 	path = gremlin/Weaver
 	url = https://github.com/inthefabric/Weaver.git
+[submodule "gremlin/ExRam.Gremlinq.git"]
+	path = gremlin/ExRam.Gremlinq.git
+	url = https://github.com/ExRam/ExRam.Gremlinq.git
+[submodule "gremlin/"]
+	path = gremlin/
+	url = https://github.com/inthefabric/Weaver.git
