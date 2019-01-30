@@ -1,4 +1,4 @@
-namespace benchmark.Import.Gremlin
+namespace Benchmark.Import.Gremlin
 {
     public class ImportGraph
     {
