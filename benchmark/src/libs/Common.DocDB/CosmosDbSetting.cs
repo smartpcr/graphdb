@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Benchmark
+﻿namespace Common.DocDB
 {
     public class CosmosDbSetting
     {
@@ -11,5 +7,7 @@ namespace Benchmark
         public string CollectionName { get; set; }
         public string AuthClientId { get; set; }
         public string AuthCertThumbprint { get; set; }
+        public string VaultName { get; set; }
+        public string DbKeySecret { get; set; }
     }
 }

@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Azure.Documents;
+﻿using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 
-namespace Benchmark
+namespace Common.DocDB
 {
     public interface IDocumentDbInitializer
     {

@@ -21,6 +21,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\libs\Common.DocDB\Common.DocDB.csproj" />
+      <ProjectReference Include="..\libs\Common.GraphDB\Common.GraphDB.csproj" />
+      <ProjectReference Include="..\libs\Common.KeyVault\Common.KeyVault.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
       <None Update="appSettings.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>

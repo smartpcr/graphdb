@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.KeyVault;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
-namespace Benchmark
+namespace Common.KeyVault
 {
     public class KeyVaultUtil
     {

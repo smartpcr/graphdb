@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 
-namespace Benchmark
+namespace Common.KeyVault
 {
     public static class CertUtil
     {

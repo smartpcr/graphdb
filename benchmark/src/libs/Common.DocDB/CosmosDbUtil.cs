@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 
-namespace Benchmark
+namespace Common.DocDB
 {
     internal class CosmosDbUtil
     {

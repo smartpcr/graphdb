@@ -1,17 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
-namespace Benchmark
+namespace Common.DocDB
 {
     public interface IDocument
     {
-        [JsonProperty("_id")]
+        [JsonProperty("id")]
         string Id { get; }
 
-        [JsonIgnore, NotMapped]
+        [JsonIgnore]
         string[] PartitionKeys { get; }
+
+        [JsonProperty("_etag")]
+        string ETag { get; set; }
+
+        [JsonProperty("_self")]
+        string Self { get; }
+
+        [JsonProperty("_rid")]
+        string ResourceId { get; }
     }
 }
