@@ -2,5 +2,5 @@ productName: benchmark-cosmosdb
 productShortName: bm
 envName: dev
 owner: 1es
-location: westus2
+location: "West US 2"
 loc: wus2

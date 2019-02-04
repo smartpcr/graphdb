@@ -75,6 +75,8 @@ function Get-OrCreateServicePrincipalWithCert {
     else {
         Write-Host "Service principal '$SpnName' already exists." 
     }
+
+    return $sp 
 }
 
 
@@ -163,8 +165,9 @@ function Install-CertFromVaultSecret {
 
     $certFile = Join-Path ([System.IO.Path]::GetTempPath()) "$CertSecretName.pfx"
     az keyvault secret download --file $certFile --vault-name $VaultName --name $CertSecretName
-    Import-PfxCertificate -FilePath $certFile -Exportable -CertStoreLocation "cert:\CurrentUser\My" 
+    $cert = Import-PfxCertificate -FilePath $certFile -Exportable -CertStoreLocation "cert:\CurrentUser\My" 
     Remove-Item $certFile -Force
+    return $cert 
 }
 
 function EnsureKeyVault {

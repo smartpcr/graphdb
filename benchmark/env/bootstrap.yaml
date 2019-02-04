@@ -10,3 +10,13 @@ kv:
     name: "{{ .Values.subscriptionAlias }}-kv"
     resourceGroup: "{{ .Values.subscriptionAlias }}-rg"
     location: "{{ .Values.location }}"
+docdb:
+    account: "{{ .Values.subscriptionAlias }}-docdb"
+    api: "SQL"
+    db: "docs"
+    collection: "requirements"
+graphdb:
+    account: "{{ .Values.subscriptionAlias }}-graph"
+    api: "Gremlin"
+    db: "graph"
+    collection: "requirements"
