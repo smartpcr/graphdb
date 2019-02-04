@@ -21,7 +21,7 @@ $bootstrapValues = Get-EnvironmentSettings -EnvName $EnvName -EnvRootFolder $env
 $azAccount = LoginAzure -SubscriptionName $bootstrapValues.global.subscriptionName
 
 Write-Host "2. Ensure keyvault is created "
-Ensure-KeyVault -rgName $bootstrapValues.global.resourceGroup -vaultName $bootstrapValues.kv.name -location $bootstrapValues.global.location
+EnsureKeyVault -rgName $bootstrapValues.global.resourceGroup -vaultName $bootstrapValues.kv.name -location $bootstrapValues.global.location
 
 Write-Host "3. Ensure service principal is created and assigned proper permission to key vault..."
 $spnName = $bootstrapValues.global.servicePrincipal
