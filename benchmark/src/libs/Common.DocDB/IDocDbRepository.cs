@@ -17,7 +17,7 @@ namespace Common.DocDB
         Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
         Task<T> FirstOrDefaultAsync(SqlQuerySpec query);
         Task<string> ExecuteStoredProcedureAsync(string storedProcedureName, params object[] parameters);
-
+        Task<Dictionary<string, int>> GroupByAsync(string groupByField);
 
         Task<T> UpsertAsync(T entity);
         Task<bool> RemoveAsync(T entity);

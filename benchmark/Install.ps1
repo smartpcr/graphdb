@@ -85,6 +85,6 @@ $docDbSettings = @{
     }
 }
 
-$secretFile = Join-Path $envFolder "secrets.json"
+$secretFile = Join-Path $envFolder "$EnvName\secrets.json"
 Write-Host "Copy settings from '$secretFile' to your project appsettings.json..." -ForegroundColor Green
 $docDbSettings | ConvertTo-Json | Out-File $secretFile

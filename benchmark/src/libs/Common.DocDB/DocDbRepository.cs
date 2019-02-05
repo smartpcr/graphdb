@@ -144,6 +144,33 @@ namespace Common.DocDB
             return await _client.ExecuteStoredProcedureAsync<string>(sproc.SelfLink, parameters);
         }
 
+        public async Task<Dictionary<string, int>> GroupByAsync(string groupByField)
+        {
+            var countsByField = new Dictionary<string, int>();
+            var prop = typeof(T).GetProperty(groupByField);
+            var docQuery = CreateDocumentQuery();
+            while (docQuery.HasMoreResults)
+            {
+                var batch = await docQuery.ExecuteNextAsync<T>();
+                foreach(var item in batch)
+                {
+                    var value = prop.GetValue(item)?.ToString();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        if(countsByField.ContainsKey(value))
+                        {
+                            countsByField[value] += 1;
+                        }
+                        else
+                        {
+                            countsByField.Add(value, 1);
+                        }
+                    }
+                }
+            }
+            return countsByField;
+        }
+
         public async Task<T> UpsertAsync(T entity)
         {
             var query = _queryBuilder.BuildSqlQuery(entity);
@@ -249,6 +276,8 @@ namespace Common.DocDB
                 var batch = await result.ExecuteNextAsync<T>();
                 total += batch.Count;
                 exportRecordsAction?.Invoke(batch.ToList());
+
+                _logger.LogInformation($"exported {total} documents");
             }
             return total;
         }

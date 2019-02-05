@@ -16,6 +16,12 @@ namespace Common.DocDB
             return client;
         }
 
+        public IDocumentClient GetClient(string acct, string authKey)
+        {
+            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, new ConnectionPolicy());
+            return client;
+        }
+
         public async Task<IBulkExecutor> GetBulkExecutor(CosmosDbSetting setting)
         {
             var dbConn = GetDbConnection(setting);
@@ -25,13 +31,15 @@ namespace Common.DocDB
             var client = new DocumentClient(dbConn.VaultUrl, dbConn.AuthorizationKey, dbConn.ConnectionPolicy);
             var collection = await client.EnsureDatabaseAndCollection(setting.DbName, setting.CollectionName);
 
-            var bulkExecutor = new BulkExecutor(client, collection);
-            await bulkExecutor.InitializeAsync();
+            return await CreateBulkExecutor(client, collection);
+        }
 
-            client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 0;
-            client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
+        public async Task<IBulkExecutor> GetBulkExecutor(string acct, string authKey, string dbName, string collName)
+        {
+            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, new ConnectionPolicy());
+            var collection = await client.EnsureDatabaseAndCollection(dbName, collName);
 
-            return bulkExecutor;
+            return await CreateBulkExecutor(client, collection);
         }
 
         private (Uri VaultUrl, string AuthorizationKey, ConnectionPolicy ConnectionPolicy) GetDbConnection(CosmosDbSetting setting)
@@ -47,6 +55,25 @@ namespace Common.DocDB
                 RequestTimeout = TimeSpan.FromSeconds(setting.TimeoutInSeconds)
             };
             return (new Uri(endpointUrl), authorizationKey, connectionPolicy);
+        }
+
+        private async Task<IBulkExecutor> CreateBulkExecutor(DocumentClient client, DocumentCollection collection)
+        {
+            try
+            {
+                var bulkExecutor = new BulkExecutor(client, collection);
+                await bulkExecutor.InitializeAsync();
+
+                client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 0;
+                client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
+
+                return bulkExecutor;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
         }
     }
 }
