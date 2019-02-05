@@ -56,22 +56,38 @@ namespace benchmark
                 var collectionName = coll.Value<string>("name");
                 var query = coll.Value<string>("query");
                 var modelType = coll.Value<string>("model");
-                int total = 0;
+                int totalexported = 0;
                 switch(modelType)
                 {
                     case nameof(ApplicabilityScope):
-                        total = ExportCollection<ApplicabilityScope>(accountName, dbName, collectionName, authKey, query).Result;
+                        totalexported = ExportCollection<ApplicabilityScope>(accountName, dbName, collectionName, authKey, query).Result;
                         break;
                     case nameof(Control):
-                        total = ExportCollection<Control>(accountName, dbName, collectionName, authKey, query).Result;
+                        totalexported = ExportCollection<Control>(accountName, dbName, collectionName, authKey, query).Result;
                         break;
                     case nameof(NodeMapping):
-                        total = ExportCollection<NodeMapping>(accountName, dbName, collectionName, authKey, query).Result;
+                        totalexported = ExportCollection<NodeMapping>(accountName, dbName, collectionName, authKey, query).Result;
                         break;
                 }
-                Console.WriteLine($"Total of {total} documents are exported from collection {collectionName}");
+                Console.WriteLine($"Total of {totalexported} documents are exported from collection {collectionName}");
+
+                int totalImported = 0;
+                switch (modelType)
+                {
+                    case nameof(ApplicabilityScope):
+                        totalImported = ImportDocuments<ApplicabilityScope>(dbSetting).Result;
+                        break;
+                    case nameof(Control):
+                        totalImported = ImportDocuments<Control>(dbSetting).Result;
+                        break;
+                    case nameof(NodeMapping):
+                        totalImported = ImportDocuments<NodeMapping>(dbSetting).Result;
+                        break;
+                }
+                Console.WriteLine($"Total of {totalImported} {modelType} documents are imported to collection {dbSetting.CollectionName}");
             }
 
+            Console.WriteLine("\nDone!\n");
             Console.Read();
         }
 
@@ -90,11 +106,7 @@ namespace benchmark
 
         private static void WriteToJsonFile<T>(IList<T> list) where T: class, IDocument,new()
         {
-            var outputFolder = Path.Combine("output", typeof(T).Name);
-            if (!Directory.Exists(outputFolder))
-            {
-                Directory.CreateDirectory(outputFolder);
-            }
+            var outputFolder = GetOutputFolder<T>();
             var idProp = typeof(T).GetProperty("Id");
             foreach(var item in list)
             {
@@ -106,6 +118,35 @@ namespace benchmark
                     File.WriteAllText(outputFile, json);
                 }
             }
+        }
+
+        private static async Task<int> ImportDocuments<T>(CosmosDbSetting setting) where T : class, IDocument, new()
+        {
+            var outputFolder = GetOutputFolder<T>();
+            var jsonFiles = Directory.GetFiles(outputFolder, "*.json");
+            var items = new List<T>();
+            foreach (var jsonFile in jsonFiles)
+            {
+                items.Add(JsonConvert.DeserializeObject<T>(File.ReadAllText(jsonFile)));
+            }
+
+            var factory = new DocumentClientFactory();
+            var docClient = factory.GetClient(setting) as DocumentClient;
+            var bulkExe = await factory.GetBulkExecutor(setting);
+            var repo = new DocDbRepository<T>(docClient, bulkExe, setting.DbName, setting.CollectionName, _loggerFactory.CreateLogger("DocDbRepo"));
+            int total = await repo.BulkImport(items);
+            return total;
+        }
+
+        private static string GetOutputFolder<T>() where T : class, IDocument, new()
+        {
+            var outputFolder = Path.Combine("output", typeof(T).Name);
+            if (!Directory.Exists(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+
+            return outputFolder;
         }
     }
 }

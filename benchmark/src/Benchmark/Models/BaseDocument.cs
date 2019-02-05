@@ -5,16 +5,11 @@ namespace Benchmark.Models
 {
     public class BaseDocument : IDocument
     {
+        [JsonProperty("id")]
         public string Id { get; set; }
 
         [JsonIgnore]
-        public string[] PartitionKeys
-        {
-            get
-            {
-                return new string[] { };
-            }
-        }
+        public string[] PartitionKeys => new string[] { };
 
         [JsonProperty("_etag")]
         public string ETag { get; set; }
@@ -25,6 +20,7 @@ namespace Benchmark.Models
         [JsonProperty("_rid")]
         public string ResourceId { get; set; }
 
+        [JsonProperty("documentType")]
         public string DocumentType { get; set; }
     }
 }

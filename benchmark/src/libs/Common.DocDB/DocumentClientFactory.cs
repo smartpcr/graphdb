@@ -4,21 +4,28 @@ using Common.KeyVault;
 using Microsoft.Azure.CosmosDB.BulkExecutor;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Common.DocDB
 {
     public class DocumentClientFactory : IDocumentClientFactory
     {
+        private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
+        {
+            ContractResolver = new CamelCasePropertyNamesContractResolver()
+        };
+
         public IDocumentClient GetClient(CosmosDbSetting setting)
         {
             var dbConn = GetDbConnection(setting);
-            var client = new DocumentClient(dbConn.VaultUrl, dbConn.AuthorizationKey, dbConn.ConnectionPolicy);
+            var client = new DocumentClient(dbConn.VaultUrl, dbConn.AuthorizationKey, JsonSerializerSettings, dbConn.ConnectionPolicy);
             return client;
         }
 
         public IDocumentClient GetClient(string acct, string authKey)
         {
-            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, new ConnectionPolicy());
+            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, JsonSerializerSettings, new ConnectionPolicy());
             return client;
         }
 
@@ -28,7 +35,7 @@ namespace Common.DocDB
             dbConn.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 30;
             dbConn.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 9;
 
-            var client = new DocumentClient(dbConn.VaultUrl, dbConn.AuthorizationKey, dbConn.ConnectionPolicy);
+            var client = new DocumentClient(dbConn.VaultUrl, dbConn.AuthorizationKey, JsonSerializerSettings, dbConn.ConnectionPolicy);
             var collection = await client.EnsureDatabaseAndCollection(setting.DbName, setting.CollectionName);
 
             return await CreateBulkExecutor(client, collection);
@@ -36,7 +43,7 @@ namespace Common.DocDB
 
         public async Task<IBulkExecutor> GetBulkExecutor(string acct, string authKey, string dbName, string collName)
         {
-            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, new ConnectionPolicy());
+            var client = new DocumentClient(new Uri($"https://{acct}.documents.azure.com:443/"), authKey, JsonSerializerSettings, new ConnectionPolicy());
             var collection = await client.EnsureDatabaseAndCollection(dbName, collName);
 
             return await CreateBulkExecutor(client, collection);

@@ -19,8 +19,7 @@ namespace Common.DocDB
         private static readonly QueryBuilder<T> _queryBuilder = new QueryBuilder<T>();
         private readonly IDocumentClient _client;
         private readonly IBulkExecutor _bulkExecutor;
-        private readonly DocumentClient _documentClient;
-        private DocumentCollection _collection;
+        private readonly DocumentCollection _collection;
         private readonly ILogger _logger;
 
         public DocDbRepository(
@@ -247,11 +246,12 @@ namespace Common.DocDB
             double totalSecondsElapsed = 0;
             int totalDocumentToImport = entities.Count();
 
-            while (bulkImportResponse.NumberOfDocumentsImported < totalDocumentToImport && !token.IsCancellationRequested)
+            while ((bulkImportResponse == null || bulkImportResponse.NumberOfDocumentsImported < totalDocumentToImport)
+                   && !token.IsCancellationRequested)
             {
                 bulkImportResponse = await _bulkExecutor.BulkImportAsync(
                     documents: entities,
-                    enableUpsert: false,
+                    enableUpsert: true,
                     disableAutomaticIdGeneration: false,
                     maxConcurrencyPerPartitionKeyRange: null,
                     maxInMemorySortingBatchSize: null,
@@ -260,7 +260,8 @@ namespace Common.DocDB
                 totalDocumentsAdded += bulkImportResponse.NumberOfDocumentsImported;
                 totalRequestUnitsConsumed += bulkImportResponse.TotalRequestUnitsConsumed;
                 totalSecondsElapsed += bulkImportResponse.TotalTimeTaken.TotalSeconds;
-                _logger.LogInformation($"added {totalDocumentsAdded}, RU consumed: {totalRequestUnitsConsumed}, elapsed: {totalSecondsElapsed} sec");
+                _logger.LogInformation(
+                    $"added {totalDocumentsAdded}, RU consumed: {totalRequestUnitsConsumed}, elapsed: {totalSecondsElapsed} sec");
             }
 
             return (int)totalDocumentsAdded;

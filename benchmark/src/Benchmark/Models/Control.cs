@@ -1,13 +1,14 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Newtonsoft.Json;
 
 namespace Benchmark.Models
 {
     public class Control : BaseDocument
     {
+        [JsonProperty("type")]
         public string Type { get; set; }
+
+        [JsonProperty("configuration")]
         public JObject Configuration { get; set; }
     }
 }
