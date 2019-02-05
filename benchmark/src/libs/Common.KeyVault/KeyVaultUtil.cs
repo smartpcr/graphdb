@@ -28,8 +28,7 @@ namespace Common.KeyVault
                 return null;
             }
 
-            var secretUrl = $"{_vaultUrl}/secrets/{name}/{latestVersion}";
-            var secret = await _client.GetSecretAsync(secretUrl);
+            var secret = await _client.GetSecretAsync(latestVersion);
             return secret.Value;
         }
 

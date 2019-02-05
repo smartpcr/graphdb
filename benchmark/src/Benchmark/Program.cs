@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Common.DocDB;
+using Microsoft.Azure.Documents;
 using Microsoft.Extensions.Configuration;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 
@@ -27,6 +28,9 @@ namespace benchmark
             //configuration.GetSection("CosmosDb").Bind(dbSetting);
 
             Console.WriteLine(JsonConvert.SerializeObject(dbSetting));
+
+            var factory = new DocumentClientFactory();
+            IDocumentClient client = factory.GetClient(dbSetting);
 
             Console.Read();
         }
