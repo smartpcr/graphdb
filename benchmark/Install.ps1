@@ -59,7 +59,7 @@ EnsureCollectionExists `
     -CollectionName $bootstrapValues.graphdb.collection `
     -CosmosDbKey $graphdbPrimaryMasterKey
 
-Write-Host "5. Output docdb settings" -ForegroundColor Green
+Write-Host "7. Output docdb settings" -ForegroundColor Green
 $docDbSettings = @{
     ServicePrincipal = @{
         ApplicationId         = $sp.appId

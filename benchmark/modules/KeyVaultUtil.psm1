@@ -183,9 +183,9 @@ function EnsureKeyVault {
         az group create --name $rgName --location $location | Out-Null
     }
 
-    $kvs = az keyvault list --resource-group $bootstrapValues.kv.resourceGroup --query "[?name=='$($vaultName)']" | ConvertFrom-Json
+    $kvs = az keyvault list --resource-group $rgName --query "[?name=='$($vaultName)']" | ConvertFrom-Json
     if ($kvs.Count -eq 0) {
-        Write-Host -Message "Creating Key Vault $($vaultName)..." 
+        Write-Host "Creating Key Vault $($vaultName)..." 
         
         az keyvault create `
             --resource-group $rgName `
