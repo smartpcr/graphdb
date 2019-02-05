@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Common.DocDB
@@ -28,10 +29,10 @@ namespace Common.DocDB
         #endregion 
 
         #region bulk
-        Task<int> BulkImport(IEnumerable<T> entities);
+        Task<int> BulkImport(IEnumerable<T> entities, CancellationToken token = new CancellationToken());
 
         Task<int> BulkExport(string queryText, SqlParameterCollection sqlParameters = null,
-            Action<IList<T>> exportRecordsAction = null);
+            Action<IList<T>> exportRecordsAction = null, CancellationToken token = new CancellationToken());
         #endregion
     }
 }

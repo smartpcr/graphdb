@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Benchmark;
+using Common.DocDB;
 using Microsoft.Extensions.Configuration;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 

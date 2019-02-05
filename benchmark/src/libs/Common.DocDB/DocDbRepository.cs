@@ -1,11 +1,15 @@
-﻿using Microsoft.Azure.Documents;
+﻿using Microsoft.Azure.CosmosDB.BulkExecutor;
+using Microsoft.Azure.CosmosDB.BulkExecutor.BulkImport;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Common.DocDB
@@ -14,12 +18,22 @@ namespace Common.DocDB
     {
         private static readonly QueryBuilder<T> _queryBuilder = new QueryBuilder<T>();
         private readonly IDocumentClient _client;
+        private readonly IBulkExecutor _bulkExecutor;
+        private readonly DocumentClient _documentClient;
         private DocumentCollection _collection;
+        private readonly ILogger _logger;
 
-        public DocDbRepository(IDocumentClient client, string dbId, string collectionId)
+        public DocDbRepository(
+            DocumentClient client, 
+            IBulkExecutor bulkExecutor, 
+            string dbId, 
+            string collectionId,
+            ILogger logger)
         {
             _client = client;
-            EnsureDatabaseAndCollection(dbId, collectionId).GetAwaiter().GetResult();
+            _bulkExecutor = bulkExecutor;
+            _collection = _client.EnsureDatabaseAndCollection(dbId, collectionId).GetAwaiter().GetResult();
+            _logger = logger;
         }
 
         public async Task<IList<T>> GetAllAsync()
@@ -198,13 +212,34 @@ namespace Common.DocDB
             return count;
         }
 
-        public Task<int> BulkImport(IEnumerable<T> entities)
+        public async Task<int> BulkImport(IEnumerable<T> entities, CancellationToken token = new CancellationToken())
         {
-            // use variant of writeGraph procedure
-            throw new NotImplementedException();
+            BulkImportResponse bulkImportResponse = null;
+            long totalDocumentsAdded = 0;
+            double totalRequestUnitsConsumed = 0;
+            double totalSecondsElapsed = 0;
+            int totalDocumentToImport = entities.Count();
+
+            while (bulkImportResponse.NumberOfDocumentsImported < totalDocumentToImport && !token.IsCancellationRequested)
+            {
+                bulkImportResponse = await _bulkExecutor.BulkImportAsync(
+                    documents: entities,
+                    enableUpsert: false,
+                    disableAutomaticIdGeneration: false,
+                    maxConcurrencyPerPartitionKeyRange: null,
+                    maxInMemorySortingBatchSize: null,
+                    cancellationToken: token);
+
+                totalDocumentsAdded += bulkImportResponse.NumberOfDocumentsImported;
+                totalRequestUnitsConsumed += bulkImportResponse.TotalRequestUnitsConsumed;
+                totalSecondsElapsed += bulkImportResponse.TotalTimeTaken.TotalSeconds;
+                _logger.LogInformation($"added {totalDocumentsAdded}, RU consumed: {totalRequestUnitsConsumed}, elapsed: {totalSecondsElapsed} sec");
+            }
+
+            return (int)totalDocumentsAdded;
         }
 
-        public async Task<int> BulkExport(string queryText, SqlParameterCollection sqlParameters = null, Action<IList<T>> exportRecordsAction = null)
+        public async Task<int> BulkExport(string queryText, SqlParameterCollection sqlParameters = null, Action<IList<T>> exportRecordsAction = null, CancellationToken token = new CancellationToken())
         {
             var sqlQuery = new SqlQuerySpec(queryText, sqlParameters ?? new SqlParameterCollection());
             var result = CreateDocumentQuery(sqlQuery);
@@ -216,28 +251,6 @@ namespace Common.DocDB
                 exportRecordsAction?.Invoke(batch.ToList());
             }
             return total;
-        }
-
-        private async Task EnsureDatabaseAndCollection(string dbId, string collectionId)
-        {
-            var db = _client.CreateDatabaseQuery().Where(d => d.Id == dbId).AsEnumerable().FirstOrDefault()
-                ?? await _client.CreateDatabaseAsync(new Database() { Id = dbId });
-
-            _collection = _client.CreateDocumentCollectionQuery(db.SelfLink)
-                .Where(c => c.Id == collectionId).AsEnumerable().FirstOrDefault();
-            if (_collection == null)
-            {
-                var collectionDefinition = new DocumentCollection() { Id = collectionId };
-                if (_queryBuilder.PartitionKeys != null && _queryBuilder.PartitionKeys.Length > 0)
-                {
-                    foreach (var partitionKey in _queryBuilder.PartitionKeys)
-                    {
-                        collectionDefinition.PartitionKey.Paths.Add(partitionKey);
-                    }
-                }
-
-                _collection = await _client.CreateDocumentCollectionAsync(db.SelfLink, collectionDefinition);
-            }
         }
 
         private IDocumentQuery<T> CreateDocumentQuery()
