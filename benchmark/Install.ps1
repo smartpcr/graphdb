@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$EnvName = "dev"
+    [string]$EnvName = "int"
 )
 
 $gitRootFolder = $PSScriptRoot
@@ -12,17 +12,19 @@ if (-not (Test-Path (Join-Path $gitRootFolder ".git") -PathType Container)) {
 $scriptFolder = Join-Path $gitRootFolder "benchmark"
 $moduleFolder = Join-Path $scriptFolder "modules"
 $envFolder = Join-Path $scriptFolder "env"
+
 Import-Module "$moduleFolder\Common.psm1" -Force
 Import-Module "$moduleFolder\CosmosDbUtil.psm1" -Force
 Import-Module "$moduleFolder\KeyVaultUtil.psm1" -Force
 
 
-Write-Host "1. retrieve environment settings..." -ForegroundColor Green
+Write-Host "1.1 retrieve environment settings..." -ForegroundColor Green
 $bootstrapValues = Get-EnvironmentSettings -EnvName $EnvName -EnvRootFolder $envFolder
+Write-Host "1.2 Login azure subscription $($bootstrapValues.global.subscriptionName)..." -ForegroundColor Green
 $azAccount = LoginAzure -SubscriptionName $bootstrapValues.global.subscriptionName
 
 Write-Host "2. Ensure keyvault is created " -ForegroundColor Green
-EnsureKeyVault -rgName $bootstrapValues.global.resourceGroup -vaultName $bootstrapValues.kv.name -location $bootstrapValues.global.location
+EnsureKeyVault -rgName $bootstrapValues.global.resourceGroup -vaultName $bootstrapValues.kv.name -ResourceGroupName $bootstrapValues.global.resourceGroup -location $bootstrapValues.global.location
 
 Write-Host "3. Ensure service principal is created and assigned proper permission to key vault..." -ForegroundColor Green
 $spnName = $bootstrapValues.global.servicePrincipal

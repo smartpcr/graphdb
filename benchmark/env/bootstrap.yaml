@@ -8,8 +8,6 @@ global:
     resourceGroup: "{{ .Values.productName }}-{{ .Values.envName }}-{{ .Values.owner }}-{{ .Values.loc }}-rg"
 kv:
     name: "{{ .Values.subscriptionAlias }}-kv"
-    resourceGroup: "{{ .Values.subscriptionAlias }}-rg"
-    location: "{{ .Values.location }}"
 docdb:
     account: "{{ .Values.subscriptionAlias }}-docdb"
     api: "SQL"

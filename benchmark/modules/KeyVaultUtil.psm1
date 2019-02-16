@@ -7,9 +7,10 @@ function EnsureCertificateInKeyVault {
 
     $existingCert = az keyvault certificate list --vault-name $VaultName --query "[?id=='https://$VaultName.vault.azure.net/certificates/$CertName']" | ConvertFrom-Json
     if ($existingCert) {
-        Write-Host "Certificate '$CertName' already exists in vault '$VaultName'"
+        Write-Host "Certificate '$CertName' already exists in vault '$VaultName'" -ForegroundColor Yellow
     }
     else {
+        Write-Host "Creating certificate '$CertName' in vault '$VaultName'..." -ForegroundColor Green
         $credentialFolder = Join-Path $ScriptFolder "credential"
         New-Item -Path $credentialFolder -ItemType Directory -Force | Out-Null
         $defaultPolicyFile = Join-Path $credentialFolder "default_policy.json"
@@ -48,32 +49,33 @@ function Get-OrCreateServicePrincipalWithCert {
         [string]$SpnName,
         [string]$SpnCertName,
         [string]$VaultName,
+        [string]$ResourceGroupName,
         [string]$EnvFolder,
         $AzureAccount
     )
 
     $sp = az ad sp list --display-name $SpnName | ConvertFrom-Json
     if (!$sp) {
-        Write-Host "Creating service principal with name '$SpnName'..." 
+        Write-Host "Creating service principal with name '$SpnName'..." -ForegroundColor Green
         
         EnsureCertificateInKeyVault -VaultName $VaultName -CertName $SpnCertName -EnvFolder $EnvFolder
 
         az ad sp create-for-rbac -n $SpnName --role contributor --keyvault $VaultName --cert $SpnCertName | Out-Null
         $sp = az ad sp list --display-name $SpnName | ConvertFrom-Json
-        Write-Host "Granting spn '$SpnName' 'contributor' role to subscription" 
+        Write-Host "Granting spn '$SpnName' 'contributor' role to subscription" -ForegroundColor Green
         az role assignment create --assignee $sp.appId --role Contributor --scope "/subscriptions/$($AzureAccount.id)" | Out-Null
 
-        Write-Host "Granting spn '$($SpnName)' permissions to keyvault '$($VaultName)'" 
+        Write-Host "Granting spn '$($SpnName)' permissions to keyvault '$($VaultName)'" -ForegroundColor Green
         az keyvault set-policy `
-            --name $($bootstrapValues.kv.name) `
-            --resource-group $bootstrapValues.kv.resourceGroup `
+            --name $VaultName `
+            --resource-group $ResourceGroupName `
             --object-id $sp.objectId `
             --spn $sp.displayName `
             --certificate-permissions get list update delete `
             --secret-permissions get list set delete | Out-Null
     }
     else {
-        Write-Host "Service principal '$SpnName' already exists." 
+        Write-Host "Service principal '$SpnName' already exists." -ForegroundColor Yellow 
     }
 
     return $sp 
@@ -185,7 +187,7 @@ function EnsureKeyVault {
 
     $kvs = az keyvault list --resource-group $rgName --query "[?name=='$($vaultName)']" | ConvertFrom-Json
     if ($kvs.Count -eq 0) {
-        Write-Host "Creating Key Vault $($vaultName)..." 
+        Write-Host "Creating Key Vault $($vaultName)..." -ForegroundColor Green
         
         az keyvault create `
             --resource-group $rgName `
@@ -197,6 +199,6 @@ function EnsureKeyVault {
             --enabled-for-template-deployment $true | Out-Null
     }
     else {
-        Write-Host "Key vault $($vaultName) is already created" 
+        Write-Host "Key vault $($vaultName) is already created" -ForegroundColor Yellow
     }
 }
