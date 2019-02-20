@@ -4,28 +4,58 @@ using System.IO;
 using System.Threading.Tasks;
 using Benchmark.Models;
 using Common.DocDB;
+using Common.KeyVault;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 
 namespace benchmark
 {
-    class Program
+    static class Program
     {
-        private static ILoggerFactory _loggerFactory;
-
         static void Main(string[] args)
         {
-            var services = new ServiceCollection();
-            _loggerFactory = new LoggerFactory();
-            // ((ILoggerFactory)_loggerFactory).AddConsole();
-            services.AddSingleton(_loggerFactory);
-            services.AddLogging();
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            var isProd = !string.IsNullOrEmpty(env) && env.Equals("Production", StringComparison.OrdinalIgnoreCase);
+            var hostBuilder = new HostBuilder()
+                .UseEnvironment(isProd?"Production": env)
+                .ConfigureAppConfiguration(configBuilder =>
+                    {
+                        configBuilder.AddJsonFile("appsettings.json", false, false);
+                        if (!isProd)
+                        {
+                            var overrides = env?.Split(".", StringSplitOptions.RemoveEmptyEntries);
+                            if (overrides != null)
+                            {
+                                foreach (var envOverride in overrides)
+                                {
+                                    configBuilder.AddJsonFile($"appsettings.{envOverride}.json", false, false);
+                                }
+                            }
+                        }
 
+                        configBuilder.AddEnvironmentVariables();
+                    })
+                .ConfigureServices((hostBuilderContext, services) =>
+                {
+                    ConfigKeyVault(services, hostBuilderContext.Configuration);
+                    
+                    ConfigureServices(services, hostBuilderContext.HostingEnvironment, hostBuilderContext.Configuration);
+                    services.TryAddSingleton<App>();
+                });
+
+            using (var host = hostBuilder.Build())
+            {
+                var app = host.Services.GetRequiredService<App>();
+                app.Run().GetAwaiter().GetResult();
+            }
+            
             var builder = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appSettings.json", optional: false, reloadOnChange: true);
@@ -145,8 +175,33 @@ namespace benchmark
             {
                 Directory.CreateDirectory(outputFolder);
             }
-
+d
             return outputFolder;
+        }
+
+        private static void ConfigureServices(IServiceCollection services, IHostingEnvironment env, IConfiguration config)
+        {
+            services.TryAddSingleton(config);
+            
+            ConfigureApp(services);
+        }
+
+        private static void ConfigKeyVault(IServiceCollection services, IConfiguration configuration)
+        {
+            var kvSetting = new KeyVaultSetting
+            {
+                AuthCertThumbprint = configuration["ServicePrincipal:CertificateThumbprint"],
+                AuthClientId = configuration["ServicePrincipal:ApplicationId"],
+                VaultName = configuration["Vault:Name"],
+            };
+            services.TryAddSingleton(kvSetting);
+        }
+        
+        
+
+        private static void ConfigureApp(IServiceCollection services)
+        {
+            
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common.KeyVault;
 using Microsoft.Azure.CosmosDB.BulkExecutor;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
@@ -52,16 +51,13 @@ namespace Common.DocDB
         private (Uri VaultUrl, string AuthorizationKey, ConnectionPolicy ConnectionPolicy) GetDbConnection(CosmosDbSetting setting)
         {
             var endpointUrl = $"https://{setting.AccountName}.documents.azure.com:443/";
-            var kvCert = CertUtil.FindCertificateByThumbprint(setting.AuthCertThumbprint);
-            var kvClient = new KeyVaultUtil(setting.VaultName, setting.AuthClientId, kvCert);
-            var authorizationKey = kvClient.GetSecret(setting.DbKeySecret).Result;
             var connectionPolicy = new ConnectionPolicy()
             {
                 ConnectionMode = ConnectionMode.Direct,
                 ConnectionProtocol = Protocol.Tcp,
                 RequestTimeout = TimeSpan.FromSeconds(setting.TimeoutInSeconds)
             };
-            return (new Uri(endpointUrl), authorizationKey, connectionPolicy);
+            return (new Uri(endpointUrl), setting.AuthKey, connectionPolicy);
         }
 
         private async Task<IBulkExecutor> CreateBulkExecutor(DocumentClient client, DocumentCollection collection)
