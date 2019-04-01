@@ -1,5 +1,7 @@
 ﻿# Setup
-the program uses service principal and cert to connect to keyvault
+the program uses service principal and cert to connect to keyvault, cert is installed in
+- CurrentUser/My (windows)
+- $HOME/CurrentUser.My (Linux, Mac)
 
 1. pick azure subscription, rg name, kv name, spn name
 2. run install script to make sure spn has access to kv (readonly)
